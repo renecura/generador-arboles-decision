@@ -45,13 +45,15 @@
   <div id='arboles'></div>
 
   <script type="module">
-    import { generar } from "./modules/generador-arboles.js";
+    import { generar, resolver } from "./modules/generador-arboles.js";
 
-    document.getElementById('btn-generar').addEventListener('click', () => drawTree(generar(12), 12));
+    document.getElementById('btn-generar').addEventListener('click', () => drawTree(generar(12,3), 12));
 
     function drawTree(data, hojas) {
 
       //d3.select("svg").remove();
+
+      let decision = 'none';
 
       var treeData = [
         data
@@ -75,11 +77,14 @@
 
       var div = d3.select("#arboles").insert('div',":first-child");
 
-      div.insert('button')
-        .text('Maximizar');
+      div.insert('button')        
+         .text('Mostrar/Ocultar decisiones')
+         .on('click', toggleDecisions);
+      //   .on('click', () => {console.log('max'); data = resolver(data, 'max'); update(root);});
       
-      div.insert('button')
-        .text('Minimizar');
+      // div.insert('button')
+      //   .text('Minimizar')
+      //   .on('click', () => {console.log('min'); data = resolver(data, 'min'); update(root);});
 
       var svg = div.insert("svg")
         .attr("width", width + margin.right + margin.left)
@@ -99,14 +104,14 @@
 
         // Compute the new tree layout.
         var nodes = tree.nodes(root).reverse(),
-          links = tree.links(nodes);
+            links = tree.links(nodes);
 
         // Normalize for fixed-depth.
-        nodes.forEach(function (d) { d.y = d.depth * 180; });
+        nodes.forEach(d => { d.y = d.depth * 180; });
 
         // Update the nodes…
         var node = svg.selectAll("g.node")
-          .data(nodes, function (d) { return d.id || (d.id = ++i); });
+          .data(nodes, d => d.id || (d.id = ++i));
 
         // Enter any new nodes at the parent's previous position.
         var nodeEnter = node.enter().append("g")
@@ -129,10 +134,11 @@
 
         // Valor
         nodeEnter.append("text")
-          .attr("x", function (d) { return d.value ? 13 : -13; })
+          .attr("x", 15)
           .attr("dy", ".35em")
-          .attr("text-anchor", function (d) { return "start"; })
-          .text(function (d) { return d.value ? d.value : ""; })
+          .attr("class", "value")
+          .attr("text-anchor", "start")
+          .text(d => d.value ? d.value : (d.min_value ? d.min_value + '/' + d.max_value :  "") )
           .style("fill-opacity", 1e-6);
 
         // Probabilidad
@@ -140,7 +146,7 @@
           .attr("x", function (d) { return d.hasOwnProperty("probability") ? -13 : 13; })
           .attr("y", -10)
           .attr("dy", ".35em")
-          .attr("text-anchor", function (d) { return "end"; })
+          .attr("text-anchor", "end")
           .text(function (d) { return d.hasOwnProperty("probability") ? "(" + d.probability + ")" : ""; })
           .style("fill-opacity", 1e-6);
 
@@ -165,6 +171,9 @@
         nodeUpdate.selectAll("text")
           .style("fill-opacity", 1);
 
+        nodeUpdate.selectAll(".value")
+          .style("fill-opacity", d => d.children ? 0 : 1);
+
         // Transition exiting nodes to the parent's new position.
         var nodeExit = node.exit().transition()
           .duration(duration)
@@ -183,6 +192,7 @@
 
         // Enter any new links at the parent's previous position.
         link.enter().insert("path", "g")
+          .style('stroke', coloringLink)
           .attr("class", "link")
           .attr("d", function (d) {
             var o = { x: source.x0, y: source.y0 };
@@ -208,6 +218,8 @@
           d.x0 = d.x;
           d.y0 = d.y;
         });
+
+        console.log("update:", links);
       }
 
       // Toggle children on click.
@@ -220,6 +232,31 @@
           d._children = null;
         }
         update(d);
+      }
+
+      function coloringLink(d) {
+        if(d.source.value || decision == 'none') return '#CCCCCC';
+
+        if(decision == 'max' && 
+          (d.source.max_value == d.target.max_value ||
+           d.source.max_value == d.target.value))
+           return '#FF0000';
+
+        if(decision == 'min' && 
+          (d.source.min_value == d.target.min_value ||
+           d.source.min_value == d.target.value))
+           return '#FF0000';
+        
+        return '#CCCCCC';
+      }
+
+      function toggleDecisions(){
+        switch (decision) {
+          case 'none': decision = 'max';  break;
+          case 'max' : decision = 'min';  break;
+          case 'min' : decision = 'none'; break;
+        }
+        update(root);
       }
     }
 

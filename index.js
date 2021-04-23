@@ -4,7 +4,7 @@ import { dibujarArbol } from "./modules/dibujar-arbol.js";
 console.log("Hello world!");
 
 function ejemplo() {
-  const a = generar();
+  const a = generar(12,3);
   console.log(a);
   document.getElementById('response').innerHTML = JSON.stringify(a);
 
